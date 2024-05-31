@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<schema id="testJson" desc="for test">
+    <p name="code" type="java.lang.Integer" eg="0"/>
+    <p name="msg" type="java.lang.String" eg="success"/>
+    <p name="data" type="java.util.List" eg="">
+        <p name="id" type="java.lang.String" eg=""/>
+        <p name="innerObj" type="java.lang.Object" eg="">
+            <p name="objId" type="java.lang.String" eg=""/>
+        </p>
+    </p>
+</schema>

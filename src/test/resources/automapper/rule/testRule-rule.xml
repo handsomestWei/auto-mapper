@@ -1,0 +1,11 @@
+<rule id="testRule">
+    <!-- 按声明顺序，逐条执行 -->
+    <r from="$.code" to="$.code"/>
+    <r from="$.msg" to="$.msg"/>
+    <!-- list，先用func=newList，做初始化 -->
+    <r from="$.data" to="$.data" func="newList"/>
+    <!-- list内对象，如果嵌套有对象，先用func=newObject，做初始化 -->
+    <r from="" to="$.data[0:].innerObj" func="newObject"/>
+    <r from="$.data[0:].idd" to="$.data[0:].id"/>
+    <r from="$.data[0:].idd" to="$.data[0:].innerObj.objId"/>
+</rule>
