@@ -4,10 +4,11 @@ import java.util.List;
 
 import org.apache.commons.lang3.StringUtils;
 
-import com.alibaba.fastjson.JSONArray;
+import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import com.alibaba.fastjson.JSONPath;
 import com.wjy.automapper.constant.XmlConstant;
+import com.wjy.automapper.mapper.func.AutoMapperFuncManager;
 import com.wjy.automapper.rule.RuleManager;
 import com.wjy.automapper.rule.xml.RuleRootElement;
 import com.wjy.automapper.rule.xml.RuleSingleElement;
@@ -28,6 +29,7 @@ public class AutoMapper {
     private volatile static SchemaManager schemaManager;
     private volatile static RuleManager ruleManager;
     private volatile static AutoMapper autoMapper;
+    private volatile static AutoMapperFuncManager funcManager;
 
     private AutoMapper() {
         String resourcePath = PathUtil.getResourcePath();
@@ -38,6 +40,7 @@ public class AutoMapper {
     private AutoMapper(String schemaFileDir, String ruleFileDir) {
         schemaManager = SchemaManager.newInstance(schemaFileDir);
         ruleManager = RuleManager.newInstance(ruleFileDir);
+        funcManager = AutoMapperFuncManager.newInstance();
     }
 
     public static AutoMapper newInstance() {
@@ -110,6 +113,9 @@ public class AutoMapper {
                 targetObject =
                     map(srcObject, r.getFrom(), targetObject, r.getTo(), targetTplObject, r.getFunc(), r.getVal());
             }
+            // 支持自定义序列化特性
+            targetObject =
+                JSON.parseObject(JSON.toJSONString(targetObject, ruleRootElement.getSerializerFeatureArray()));
         } catch (Exception e) {
             log.error(e.getMessage(), e);
         }
@@ -119,20 +125,21 @@ public class AutoMapper {
     private JSONObject map(JSONObject srcObject, String srcPath, JSONObject targetObject, String targetPath,
         JSONObject targetTplObject, String func, String val) {
         try {
+            if (StringUtils.isNotEmpty(func)) {
+                // 函数调用
+                return funcManager.execute(func, srcObject, srcPath, targetObject, targetPath, targetTplObject, val);
+            }
             if (StringUtils.isEmpty(targetPath)) {
                 return targetObject;
-            }
-            if (StringUtils.isNotEmpty(func)) {
-                return MapperUtil.callFunc(srcObject, srcPath, targetObject, targetPath, targetTplObject, func, val);
             }
 
             Object srcValue = JSONPath.eval(srcObject, srcPath);
             if (srcValue == null) {
                 return targetObject;
             }
-            if (srcValue instanceof JSONArray && JsonPathUtil.containsArray(targetPath)) {
+            if (srcValue instanceof List) {
                 // 多对多
-                Object[] objects = ((JSONArray)srcValue).toArray();
+                Object[] objects = ((List)srcValue).toArray();
                 JsonPathUtil.arraySetManyToMany(targetObject, targetPath, objects);
             } else {
                 // 1对1
