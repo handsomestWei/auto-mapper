@@ -1,4 +1,6 @@
-<rule id="testRule">
+<!-- 约定id和文件名一致 -->
+<!-- serializerFeatures值为fastjson.serializer.SerializerFeature枚举类型的ordinal序，多个用逗号分隔 -->
+<rule id="testRule" desc="for test" serializerFeatures="6,7">
     <!-- 按声明顺序，逐条执行 -->
     <r from="$.code" to="$.code"/>
     <r from="$.msg" to="$.msg"/>
