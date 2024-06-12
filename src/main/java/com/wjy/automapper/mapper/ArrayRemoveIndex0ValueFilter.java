@@ -10,6 +10,7 @@ import com.alibaba.fastjson.serializer.ValueFilter;
  * @author weijiayu
  * @date 2024/5/24 11:34
  */
+@Deprecated
 public class ArrayRemoveIndex0ValueFilter implements ValueFilter {
 
     @Override

@@ -2,8 +2,11 @@ package com.wjy.automapper.util;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Type;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import org.apache.commons.lang3.StringUtils;
 
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
@@ -39,7 +42,14 @@ public class JsonUtil {
             for (Map.Entry<String, Object> entry : tplObj.getInnerMap().entrySet()) {
                 String key = entry.getKey();
                 Object value = entry.getValue();
-                if (value instanceof JSONArray || value instanceof JSONObject) {
+                if (value instanceof JSONArray) {
+                    JSONArray jsonArray = (JSONArray)value;
+                    if (jsonArray != null && jsonArray.size() == 0) {
+                        jsonObject.put(key, jsonArray);
+                    } else {
+                        jsonObject.put(key, null);
+                    }
+                } else if (value instanceof JSONObject) {
                     jsonObject.put(key, null);
                 } else {
                     jsonObject.put(key, value);
@@ -49,6 +59,22 @@ public class JsonUtil {
             log.error(e.getMessage(), e);
         }
         return jsonObject;
+    }
+
+    // 利用Map.Entry的kv，实现方法双返回值
+    public static Map.Entry<String, JSONObject> getNotNonePathAndObjectPair(JSONObject srcObject, String srcPath,
+        JSONObject targetObject, String targetPath) {
+        HashMap<String, JSONObject> pairMap = new HashMap<>();
+        if (StringUtils.isNotEmpty(srcPath)) {
+            pairMap.put(srcPath, srcObject);
+        } else if (StringUtils.isNotEmpty(targetPath)) {
+            pairMap.put(targetPath, targetObject);
+        }
+        if (pairMap.isEmpty()) {
+            return null;
+        } else {
+            return pairMap.entrySet().iterator().next();
+        }
     }
 
     // 格式化缩进

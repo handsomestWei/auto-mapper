@@ -12,7 +12,7 @@ import com.alibaba.fastjson.JSONPath;
  */
 public class JsonPathUtil {
 
-    // 识别list
+    // 识别list。区别于[*]，该通配符也可作用在对象返回对象的所有属性值
     public static final String LIST_TOKEN = "[0:]";
 
     public static boolean containsArray(String path) {
