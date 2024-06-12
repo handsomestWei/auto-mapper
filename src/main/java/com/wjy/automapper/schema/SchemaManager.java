@@ -36,6 +36,9 @@ public class SchemaManager extends AbsFileMonitor {
     }
 
     private SchemaManager(String schemaFileDir) {
+        if (StringUtils.isEmpty(schemaFileDir)) {
+            schemaFileDir = PathUtil.getResourcePath() + XmlConstant.SCHEMA_FILE_DEFAULT_DIR;
+        }
         this.schemaFileDir = schemaFileDir;
         fileMonitor = createFileMonitor(schemaFileDir, XmlConstant.SCHEMA_FILE_SUFFIX,
             XmlConstant.FILE_MONITOR_INTERVAL_DEFAULT_SEC, this);
@@ -75,17 +78,19 @@ public class SchemaManager extends AbsFileMonitor {
                 return null;
             }
             JSONObject jsonObject = schemaObjMap.get(schemaId);
+            if (jsonObject == null) {
+                // 延迟加载
+                String filePath = schemaFileDir + schemaId + XmlConstant.SCHEMA_FILE_SUFFIX;
+                jsonObject = loadSchemaFile(filePath);
+            }
             if (jsonObject != null) {
                 // 对象池化，基于模板做对象拷贝
                 return JsonUtil.deepClone(jsonObject);
             }
-            // 延迟加载
-            String filePath = schemaFileDir + schemaId + XmlConstant.SCHEMA_FILE_SUFFIX;
-            return loadSchemaFile(filePath);
         } catch (Exception e) {
             log.error(e.getMessage(), e);
-            return null;
         }
+        return null;
     }
 
     public JSONObject getTplObjWithClass(Class pojoClass) {

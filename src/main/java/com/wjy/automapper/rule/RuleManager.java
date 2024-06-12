@@ -34,6 +34,9 @@ public class RuleManager extends AbsFileMonitor {
     }
 
     private RuleManager(String ruleFileDir) {
+        if (StringUtils.isEmpty(ruleFileDir)) {
+            ruleFileDir = PathUtil.getResourcePath() + XmlConstant.SCHEMA_FILE_DEFAULT_DIR;
+        }
         this.ruleFileDir = ruleFileDir;
         fileMonitor = createFileMonitor(ruleFileDir, XmlConstant.RULE_FILE_SUFFIX,
             XmlConstant.FILE_MONITOR_INTERVAL_DEFAULT_SEC, this);
@@ -73,12 +76,12 @@ public class RuleManager extends AbsFileMonitor {
                 return null;
             }
             RuleRootElement rootElement = ruleMap.get(ruleId);
-            if (rootElement != null) {
-                return rootElement;
+            if (rootElement == null) {
+                // 延迟加载
+                String filePath = ruleFileDir + ruleId + XmlConstant.RULE_FILE_SUFFIX;
+                rootElement = loadRuleFile(filePath);
             }
-            // 延迟加载
-            String filePath = ruleFileDir + ruleId + XmlConstant.RULE_FILE_SUFFIX;
-            return loadRuleFile(filePath);
+            return rootElement;
         } catch (Exception e) {
             log.error(e.getMessage(), e);
             return null;
