@@ -58,6 +58,8 @@ public class AutoMapperFuncManager {
                 func = innerFuncMap.get(funcName);
             }
             if (func != null) {
+                // 如果是${xx}形式，先从环境量里取值
+                val = getValueWithEnv(val);
                 targetObject = func.execute(srcObject, srcPath, targetObject, targetPath, targetTplObject, val);
             }
         } catch (Throwable e) {
@@ -96,5 +98,19 @@ public class AutoMapperFuncManager {
             }
             spiFuncMap.put(spiFunc.getFuncName(), spiFunc);
         }
+    }
+
+    // 读取注入的环境量。集成spring框架通过@Value注入后需要使用System.setProperty()设置
+    private String getValueWithEnv(String value) {
+        if (StringUtils.isEmpty(value)) {
+            return value;
+        }
+        if (value.startsWith("${") && value.endsWith("}")) {
+            String envValue = System.getProperty(value);
+            if (StringUtils.isNotEmpty(envValue)) {
+                value = envValue;
+            }
+        }
+        return value;
     }
 }
