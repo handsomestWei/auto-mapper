@@ -1,0 +1,54 @@
+:root {
+  --bg: #0f1419;
+  --panel: #151c24;
+  --panel-2: #1a2330;
+  --border: #2a3544;
+  --text: #e6edf3;
+  --muted: #8b9cb3;
+  --accent: #3d8bfd;
+  --accent-dim: #2563a8;
+  font-synthesis: weight;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+  font-family:
+    'Segoe UI',
+    system-ui,
+    -apple-system,
+    sans-serif;
+  background: var(--bg);
+  color: var(--text);
+}
+
+#app {
+  min-height: 100vh;
+}
+
+button.btn {
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: var(--panel-2);
+  color: var(--text);
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 13px;
+}
+button.btn:hover {
+  border-color: var(--accent);
+  background: #1c2836;
+}
+input.inp {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 5px 8px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 13px;
+}

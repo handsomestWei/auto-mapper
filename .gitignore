@@ -1,4 +1,6 @@
 HELP.md
+web/node_modules/
+web/dist/
 target/
 .mvn/
 !**/src/main/**/target/
