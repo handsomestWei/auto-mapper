@@ -1,43 +1,57 @@
 <script setup>
-import { ref, reactive, onMounted, watch } from 'vue'
+import { ref, reactive, onMounted, watch, computed } from 'vue'
 import TreeView from './TreeView.vue'
+import LineGutterText from './LineGutterText.vue'
+import TreeGutterView from './TreeGutterView.vue'
 import {
   buildSchemaFromJsonString,
   objectToJsonString,
   buildJsonExampleFromTree,
-  schemaToXmlString,
-  parseSchemaXmlString
+  schemaToXmlString
 } from './schema.js'
+import { formatJsonParseError } from './jsonError.js'
+import { applyPathHintsToNodes } from './schemaDemoHints.js'
+import { countSchemaTreeNodes } from './treeLineCount.js'
 
 const defaultJson = `{
+  "version": "1.0",
+  "ok": true,
   "code": 0,
   "msg": "success",
   "data": [
     {
-      "id": "",
+      "id": "row-001",
+      "score": 98.5,
       "innerObj": {
-        "objId": ""
+        "objId": "ext-abc-99",
+        "label": "示例标签"
       }
     }
-  ]
+  ],
+  "meta": {
+    "traceId": "trace-8f3a2b-0001"
+  }
 }`
 
 const schema = reactive({
-  id: 'testJson',
-  desc: 'for test',
+  id: 'demoJson',
+  desc: '订单/列表查询响应样例（含 eg 与 desc 说明）',
   children: []
 })
 
 const jsonText = ref('')
 const xmlText = ref('')
 const jsonError = ref('')
-const xmlError = ref('')
 
 let editSource = null
 let internal = false
 
 function buildFullSchema() {
   return { id: schema.id, desc: schema.desc, children: schema.children }
+}
+
+function syncXmlFromSchema() {
+  xmlText.value = schemaToXmlString(buildFullSchema())
 }
 
 function applyFromJson() {
@@ -47,11 +61,11 @@ function applyFromJson() {
   try {
     jsonError.value = ''
     const s = buildSchemaFromJsonString(schema.id, schema.desc, jsonText.value)
+    applyPathHintsToNodes(s.children, '')
     schema.children = s.children
-    xmlText.value = schemaToXmlString(buildFullSchema())
-    xmlError.value = ''
+    syncXmlFromSchema()
   } catch (e) {
-    jsonError.value = e.message || String(e)
+    jsonError.value = formatJsonParseError(e, jsonText.value)
   } finally {
     internal = false
   }
@@ -65,30 +79,9 @@ function applyFromTree() {
     const example = buildJsonExampleFromTree(buildFullSchema())
     jsonText.value = objectToJsonString(example)
     jsonError.value = ''
-    xmlText.value = schemaToXmlString(buildFullSchema())
-    xmlError.value = ''
+    syncXmlFromSchema()
   } catch (e) {
     jsonError.value = e.message || String(e)
-  } finally {
-    internal = false
-  }
-}
-
-function applyFromXml() {
-  if (internal) return
-  editSource = 'xml'
-  internal = true
-  try {
-    xmlError.value = ''
-    const parsed = parseSchemaXmlString(xmlText.value)
-    schema.id = parsed.id
-    schema.desc = parsed.desc
-    schema.children = parsed.children
-    const example = buildJsonExampleFromTree(buildFullSchema())
-    jsonText.value = objectToJsonString(example)
-    jsonError.value = ''
-  } catch (e) {
-    xmlError.value = e.message || String(e)
   } finally {
     internal = false
   }
@@ -106,12 +99,6 @@ function onJsonInput() {
   jsonTimer = setTimeout(applyFromJson, 400)
 }
 
-let xmlTimer
-function onXmlInput() {
-  clearTimeout(xmlTimer)
-  xmlTimer = setTimeout(applyFromXml, 400)
-}
-
 function exportXml() {
   const blob = new Blob([xmlText.value], { type: 'application/xml;charset=utf-8' })
   const a = document.createElement('a')
@@ -121,14 +108,35 @@ function exportXml() {
   URL.revokeObjectURL(a.href)
 }
 
+function resetDemo() {
+  internal = true
+  editSource = 'json'
+  schema.id = 'demoJson'
+  schema.desc = '订单/列表查询响应样例（含 eg 与 desc 说明）'
+  jsonText.value = defaultJson.trim()
+  try {
+    const s = buildSchemaFromJsonString(schema.id, schema.desc, jsonText.value)
+    applyPathHintsToNodes(s.children, '')
+    schema.children = s.children
+    syncXmlFromSchema()
+    jsonError.value = ''
+  } catch (e) {
+    jsonError.value = formatJsonParseError(e, jsonText.value)
+  }
+  internal = false
+}
+
+const treeLineCount = computed(() => countSchemaTreeNodes(schema.children))
+
 onMounted(() => {
   internal = true
   editSource = 'json'
   jsonText.value = defaultJson.trim()
   try {
     const s = buildSchemaFromJsonString(schema.id, schema.desc, jsonText.value)
+    applyPathHintsToNodes(s.children, '')
     schema.children = s.children
-    xmlText.value = schemaToXmlString(buildFullSchema())
+    syncXmlFromSchema()
   } catch {
     schema.children = []
   }
@@ -141,7 +149,6 @@ watch(
     if (internal) return
     if (editSource === 'json') applyFromJson()
     else if (editSource === 'tree') applyFromTree()
-    else if (editSource === 'xml') applyFromXml()
   }
 )
 </script>
@@ -150,55 +157,89 @@ watch(
   <div class="app">
     <header class="header">
       <h1>auto-mapper · Schema 设计器</h1>
-      <p class="sub">
-        与 Java
-        <code>SchemaUtil</code>
-        的 JSON→XML 结构一致；编辑任意一栏将联动更新其余区域。
-      </p>
     </header>
 
     <div class="meta">
       <label>
         <span>schema id</span>
-        <input v-model="schema.id" type="text" class="inp" />
+        <input
+          v-model="schema.id"
+          type="text"
+          class="inp"
+        >
       </label>
       <label>
         <span>描述 desc</span>
-        <input v-model="schema.desc" type="text" class="inp" />
+        <input
+          v-model="schema.desc"
+          type="text"
+          class="inp meta-wide"
+        >
       </label>
+      <div class="meta-actions">
+        <button
+          type="button"
+          class="btn"
+          @click="resetDemo"
+        >
+          重置
+        </button>
+        <button
+          type="button"
+          class="btn primary"
+          @click="exportXml"
+        >
+          导出 {{ schema.id || 'schema' }}-schema.xml
+        </button>
+      </div>
     </div>
 
     <div class="grid">
       <section class="panel">
         <h2>JSON 样例</h2>
-        <textarea
-          v-model="jsonText"
-          class="code"
-          spellcheck="false"
-          placeholder="粘贴 JSON 样例"
-          @input="onJsonInput"
-        />
-        <p v-if="jsonError" class="err">{{ jsonError }}</p>
+        <p class="panel-hint">
+          将完整 json 样例数据复制拷贝到本区域
+        </p>
+        <div class="code-wrap">
+          <LineGutterText
+            v-model="jsonText"
+            @input="onJsonInput"
+          />
+        </div>
+        <p
+          v-if="jsonError"
+          class="err"
+        >
+          {{ jsonError }}
+        </p>
       </section>
 
       <section class="panel tree-panel">
         <h2>结构树</h2>
-        <div class="tree-scroll">
-          <TreeView :nodes="schema.children" @update="onTreeUpdate" />
-        </div>
+        <p class="panel-hint">
+          可视化编辑调整字段
+        </p>
+        <TreeGutterView
+          :line-count="treeLineCount"
+          :min-rows="12"
+        >
+          <TreeView
+            :nodes="schema.children"
+            @update="onTreeUpdate"
+          />
+        </TreeGutterView>
       </section>
 
       <section class="panel">
         <h2>Schema XML</h2>
-        <textarea
-          v-model="xmlText"
-          class="code"
-          spellcheck="false"
-          @input="onXmlInput"
-        />
-        <p v-if="xmlError" class="err">{{ xmlError }}</p>
-        <div class="actions">
-          <button type="button" class="btn" @click="exportXml">导出 {{ schema.id || 'schema' }}-schema.xml</button>
+        <p class="panel-hint">
+          内容预览
+        </p>
+        <div class="code-wrap">
+          <LineGutterText
+            v-model="xmlText"
+            read-only
+          />
         </div>
       </section>
     </div>
@@ -214,17 +255,8 @@ watch(
 .header h1 {
   font-size: 1.25rem;
   font-weight: 600;
-  margin: 0 0 0.35rem;
-}
-.sub {
   margin: 0;
-  color: var(--muted);
-  font-size: 13px;
-}
-.sub code {
-  background: var(--panel-2);
-  padding: 0 0.3rem;
-  border-radius: 4px;
+  color: var(--text);
 }
 .meta {
   display: flex;
@@ -240,13 +272,31 @@ watch(
   font-size: 13px;
 }
 .meta .inp {
-  width: 200px;
+  width: 180px;
+}
+.meta-wide {
+  width: min(420px, 40vw) !important;
+}
+.meta-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-left: auto;
+}
+.btn.primary {
+  background: var(--accent);
+  color: #fff;
+  border-color: #1d4ed8;
+}
+.btn.primary:hover {
+  background: #1d4ed8;
+  border-color: #1e40af;
 }
 .grid {
   display: grid;
-  grid-template-columns: 1fr 1.1fr 1fr;
-  gap: 10px;
-  min-height: calc(100vh - 200px);
+  grid-template-columns: 1fr 1.15fr 1fr;
+  gap: 12px;
+  min-height: calc(100vh - 180px);
 }
 @media (max-width: 1100px) {
   .grid {
@@ -265,37 +315,31 @@ watch(
 .panel h2 {
   font-size: 13px;
   font-weight: 600;
-  margin: 0 0 8px;
-  color: var(--muted);
+  margin: 0 0 4px;
+  color: var(--text);
   text-transform: uppercase;
   letter-spacing: 0.03em;
 }
-.code {
-  flex: 1;
-  width: 100%;
-  min-height: 280px;
-  font-family: ui-monospace, 'Cascadia Code', 'Fira Code', Menlo, monospace;
+.panel-hint {
+  margin: 0 0 8px;
   font-size: 12px;
-  line-height: 1.45;
-  padding: 8px 10px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: var(--bg);
-  color: var(--text);
-  resize: vertical;
+  color: var(--muted);
+  line-height: 1.4;
 }
-.tree-panel .tree-scroll {
+.code-wrap {
   flex: 1;
-  overflow: auto;
-  min-height: 240px;
-  padding: 4px 0;
+  display: flex;
+  min-height: 0;
+}
+.code-wrap :deep(.gwrap) {
+  min-height: 280px;
+}
+.tree-panel :deep(.tgw) {
+  min-height: 280px;
 }
 .err {
   color: #c62828;
   font-size: 12px;
   margin: 6px 0 0;
-}
-.actions {
-  margin-top: 8px;
 }
 </style>
