@@ -51,6 +51,6 @@ JSONObject rs = AutoMapper.getInstance().map(srcObj, "testJson", "testRule");
 
 仓库内 `web/` 为 Vite + Vue 3 单页：浅色主题；左侧 JSON 样例（带行号）、中间可编辑结构树（带行号）、右侧为与 `SchemaUtil` 一致的 `*-schema.xml` 只读预览（带行号）。顶部可配置 schema id / desc，「重置」恢复演示数据，「导出」下载 XML。左侧 JSON 与中间树联动更新；XML 由结构自动计算。
 
-界面预览与演示录屏见 `web/docs/`（文件名与 PR #1 关联）。
+界面预览与演示录屏见 `web/docs/`（文件名与 PR #2 关联，如 `ui-preview-pr2.png`）。
 
 在 `web` 目录：`npm install`、`npm run dev` 本地启动；`npm run build` 输出至 `web/dist`；`npm run lint` 检查并自动修复前端代码风格问题。
