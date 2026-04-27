@@ -36,3 +36,8 @@ String ruleId = "testRule";
 // step4 对源pojo，依据规则，转换成目标testJson
 JSONObject rs = AutoMapper.getInstance().map(srcObj, "testJson", "testRule");
 ```
+
+## 前端 Schema 设计器（Vue 3）
+仓库内 `web/` 为 Vite + Vue 3 单页：左侧 JSON 样例、中间可编辑树、右侧与 `SchemaUtil` 一致的 `*-schema.xml` 文本，可导出。编辑任一区域会联动其它区域（JSON / 树 / XML 互为输入）。
+
+在 `web` 目录执行 `npm install`、`npm run dev` 即可本地启动；`npm run build` 输出至 `web/dist`。
