@@ -1,12 +1,15 @@
 :root {
-  --bg: #0f1419;
-  --panel: #151c24;
-  --panel-2: #1a2330;
-  --border: #2a3544;
-  --text: #e6edf3;
-  --muted: #8b9cb3;
-  --accent: #3d8bfd;
-  --accent-dim: #2563a8;
+  --bg: #ffffff;
+  --panel: #f8f9fb;
+  --panel-2: #f0f3f7;
+  --code-bg: #ffffff;
+  --gutter-bg: #f4f5f7;
+  --gutter: #6b7280;
+  --border: #d0d5dd;
+  --text: #1f2937;
+  --muted: #5c667a;
+  --accent: #2563eb;
+  --accent-dim: #93c5fd;
   font-synthesis: weight;
 }
 
@@ -39,10 +42,15 @@ button.btn {
   border-radius: 6px;
   padding: 6px 12px;
   font-size: 13px;
+  white-space: nowrap;
 }
 button.btn:hover {
   border-color: var(--accent);
-  background: #1c2836;
+  background: #e8eef9;
+}
+button.btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 input.inp {
   border: 1px solid var(--border);
@@ -51,4 +59,9 @@ input.inp {
   background: var(--bg);
   color: var(--text);
   font-size: 13px;
+}
+input.inp:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.15);
 }
