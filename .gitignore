@@ -1,7 +1,8 @@
 HELP.md
-web/node_modules/
-web/dist/
+automapper-design-web/node_modules/
+automapper-design-web/dist/
 target/
+automapper-core/target/
 .mvn/
 !**/src/main/**/target/
 !**/src/test/**/target/

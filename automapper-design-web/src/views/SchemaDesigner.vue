@@ -1,37 +1,20 @@
 <script setup>
 import { ref, reactive, onMounted, watch, onUnmounted, nextTick } from 'vue'
-import TreeView from './TreeView.vue'
-import LineGutterText from './LineGutterText.vue'
-import TreeGutterView from './TreeGutterView.vue'
+import TreeView from '../TreeView.vue'
+import LineGutterText from '../LineGutterText.vue'
+import TreeGutterView from '../TreeGutterView.vue'
 import {
   buildSchemaFromJsonString,
   objectToJsonString,
   buildJsonExampleFromTree,
   schemaToXmlString,
   parseSchemaXmlString
-} from './schema.js'
-import { formatJsonParseError, getJsonParseErrorLine } from './jsonError.js'
-import { applyPathHintsToNodes } from './schemaDemoHints.js'
+} from '../schema.js'
+import { formatJsonParseError, getJsonParseErrorLine } from '../jsonError.js'
+import { applyPathHintsToNodes } from '../schemaDemoHints.js'
+import { DEFAULT_JSON_SAMPLE } from '../demoSamples.js'
 
-const defaultJson = `{
-  "version": "1.0",
-  "ok": true,
-  "code": 0,
-  "msg": "success",
-  "data": [
-    {
-      "id": "row-001",
-      "score": 98.5,
-      "innerObj": {
-        "objId": "ext-abc-99",
-        "label": "示例标签"
-      }
-    }
-  ],
-  "meta": {
-    "traceId": "trace-8f3a2b-0001"
-  }
-}`
+const defaultJson = DEFAULT_JSON_SAMPLE.trim()
 
 const schema = reactive({
   id: 'demoJson',
@@ -289,7 +272,10 @@ watch(
 <template>
   <div class="app">
     <header class="header">
-      <h1>auto-mapper · Schema 设计器</h1>
+      <h1>Schema 设计器</h1>
+      <p class="header-desc">
+        左侧为完整 JSON 样例，可直接编辑、粘贴或使用「导入 json」；右侧结构树中可视化编辑字段，并可通过「导入 / 预览 / 导出 schema」管理 XML。
+      </p>
     </header>
 
     <div class="meta">
@@ -316,44 +302,24 @@ watch(
           >
             重置
           </button>
-          <button
-            type="button"
-            class="btn"
-            @click="requestImportJson"
-          >
-            导入json
-          </button>
-          <button
-            type="button"
-            class="btn"
-            @click="requestImportSchema"
-          >
-            导入schema
-          </button>
-          <button
-            type="button"
-            class="btn"
-            @click="xmlPreviewOpen = true"
-          >
-            预览schema
-          </button>
-          <button
-            type="button"
-            class="btn primary"
-            @click="exportXml"
-          >
-            导出schema
-          </button>
         </div>
       </label>
     </div>
 
     <div class="grid">
-      <section class="panel">
-        <h2>JSON 样例</h2>
-        <p class="panel-hint">
-          完整 json 样例数据。可复制拷贝到本区域，也可使用导入方式
-        </p>
+      <section class="panel panel-json">
+        <div class="panel-head">
+          <h2>JSON 样例</h2>
+          <div class="panel-head-actions">
+            <button
+              type="button"
+              class="btn"
+              @click="requestImportJson"
+            >
+              导入json
+            </button>
+          </div>
+        </div>
         <div class="code-wrap">
           <LineGutterText
             v-model="jsonText"
@@ -371,10 +337,32 @@ watch(
       </section>
 
       <section class="panel tree-panel">
-        <h2>结构树</h2>
-        <p class="panel-hint">
-          可视化编辑调整字段
-        </p>
+        <div class="panel-head">
+          <h2>Schema 结构树</h2>
+          <div class="panel-head-actions">
+            <button
+              type="button"
+              class="btn"
+              @click="requestImportSchema"
+            >
+              导入schema
+            </button>
+            <button
+              type="button"
+              class="btn"
+              @click="xmlPreviewOpen = true"
+            >
+              预览schema
+            </button>
+            <button
+              type="button"
+              class="btn primary"
+              @click="exportXml"
+            >
+              导出schema
+            </button>
+          </div>
+        </div>
         <TreeGutterView>
           <TreeView
             :nodes="schema.children"
@@ -502,6 +490,13 @@ watch(
   margin: 0;
   color: var(--text);
 }
+.header-desc {
+  margin: 0.4rem 0 0;
+  max-width: 56rem;
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.45;
+}
 .meta {
   display: flex;
   flex-wrap: wrap;
@@ -519,7 +514,7 @@ watch(
   width: 180px;
 }
 .meta-wide {
-  width: min(420px, 40vw) !important;
+  width: min(280px, 32vw) !important;
 }
 .meta-desc-row {
   display: flex;
@@ -544,7 +539,8 @@ watch(
 }
 .grid {
   display: grid;
-  grid-template-columns: 1fr 1.15fr;
+  /* 与规则页左侧 panel-schema 同一套列宽 */
+  grid-template-columns: minmax(240px, min(38vw, 460px)) minmax(0, 1fr);
   gap: 12px;
   min-height: calc(100vh - 180px);
 }
@@ -552,6 +548,10 @@ watch(
   .grid {
     grid-template-columns: 1fr;
   }
+}
+.panel-json {
+  width: 100%;
+  min-width: 0;
 }
 .panel {
   display: flex;
@@ -562,13 +562,27 @@ watch(
   border-radius: 8px;
   padding: 10px 12px;
 }
-.panel h2 {
+.panel-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0 0 6px;
+}
+.panel-head h2 {
+  margin: 0;
   font-size: 13px;
   font-weight: 600;
-  margin: 0 0 4px;
   color: var(--text);
-  text-transform: uppercase;
   letter-spacing: 0.03em;
+}
+.panel-head-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
 }
 .panel-hint {
   margin: 0 0 8px;
@@ -628,7 +642,6 @@ watch(
   font-weight: 600;
   margin: 0;
   color: var(--text);
-  text-transform: uppercase;
   letter-spacing: 0.03em;
 }
 .xml-preview-hint {

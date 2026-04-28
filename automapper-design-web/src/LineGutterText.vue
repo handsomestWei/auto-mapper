@@ -87,9 +87,13 @@ function scrollErrorLineVisible() {
 
 watch(
   () => [props.errorLine, props.modelValue],
-  () => {
+  ([, v]) => {
+    if (props.readOnly && ta.value && ta.value.value !== (v ?? '')) {
+      ta.value.value = v ?? ''
+    }
     nextTick(() => {
       syncGutterSize()
+      onScroll()
       scrollErrorLineVisible()
     })
   }
@@ -104,16 +108,6 @@ onMounted(() => {
     scrollErrorLineVisible()
   })
 })
-
-watch(
-  () => props.modelValue,
-  () => {
-    nextTick(() => {
-      syncGutterSize()
-      onScroll()
-    })
-  }
-)
 </script>
 
 <template>

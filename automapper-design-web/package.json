@@ -1,5 +1,5 @@
 {
-  "name": "automapper-ui",
+  "name": "automapper-design-web",
   "private": true,
   "version": "1.0.0",
   "type": "module",
@@ -10,7 +10,8 @@
     "lint": "eslint . --ext .js,.vue --fix"
   },
   "dependencies": {
-    "vue": "^3.5.12"
+    "vue": "^3.5.12",
+    "vue-router": "^4.6.4"
   },
   "devDependencies": {
     "@eslint/js": "^9.15.0",
