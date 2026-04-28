@@ -1,5 +1,5 @@
 <script setup>
-import { ref, reactive, onMounted, watch, computed } from 'vue'
+import { ref, reactive, onMounted, watch, onUnmounted, nextTick } from 'vue'
 import TreeView from './TreeView.vue'
 import LineGutterText from './LineGutterText.vue'
 import TreeGutterView from './TreeGutterView.vue'
@@ -7,11 +7,11 @@ import {
   buildSchemaFromJsonString,
   objectToJsonString,
   buildJsonExampleFromTree,
-  schemaToXmlString
+  schemaToXmlString,
+  parseSchemaXmlString
 } from './schema.js'
-import { formatJsonParseError } from './jsonError.js'
+import { formatJsonParseError, getJsonParseErrorLine } from './jsonError.js'
 import { applyPathHintsToNodes } from './schemaDemoHints.js'
-import { countSchemaTreeNodes } from './treeLineCount.js'
 
 const defaultJson = `{
   "version": "1.0",
@@ -35,13 +35,142 @@ const defaultJson = `{
 
 const schema = reactive({
   id: 'demoJson',
-  desc: '订单/列表查询响应样例（含 eg 与 desc 说明）',
+  desc: '订单/列表查询响应样例',
   children: []
 })
 
 const jsonText = ref('')
 const xmlText = ref('')
 const jsonError = ref('')
+/** JSON 解析错误行（1-based），与左侧行号、高亮一致 */
+const jsonErrorLine = ref(null)
+
+function clearJsonError() {
+  jsonError.value = ''
+  jsonErrorLine.value = null
+}
+
+function setJsonParseError(err, text) {
+  jsonError.value = formatJsonParseError(err, text)
+  jsonErrorLine.value = getJsonParseErrorLine(err, text)
+}
+const xmlPreviewOpen = ref(false)
+/** null | 'json' | 'schema' | 'reset' */
+const importConfirmKind = ref(null)
+const fileJsonImport = ref(null)
+const fileSchemaImport = ref(null)
+
+function closeXmlPreview() {
+  xmlPreviewOpen.value = false
+}
+
+function cancelImportConfirm() {
+  importConfirmKind.value = null
+}
+
+function confirmImportProceed() {
+  const k = importConfirmKind.value
+  importConfirmKind.value = null
+  if (k === 'reset') {
+    resetDemo()
+    return
+  }
+  nextTick(() => {
+    if (k === 'json') fileJsonImport.value?.click()
+    else if (k === 'schema') fileSchemaImport.value?.click()
+  })
+}
+
+function requestImportJson() {
+  importConfirmKind.value = 'json'
+}
+
+function requestImportSchema() {
+  importConfirmKind.value = 'schema'
+}
+
+function requestReset() {
+  importConfirmKind.value = 'reset'
+}
+
+async function onJsonFilePick(e) {
+  const input = e.target
+  const f = input.files?.[0]
+  input.value = ''
+  if (!f) return
+  try {
+    const text = await f.text()
+    applyImportedJson(text)
+  } catch (err) {
+    jsonError.value = err.message ? `导入失败：${err.message}` : String(err)
+    jsonErrorLine.value = null
+  }
+}
+
+async function onSchemaFilePick(e) {
+  const input = e.target
+  const f = input.files?.[0]
+  input.value = ''
+  if (!f) return
+  try {
+    const text = await f.text()
+    const parsed = parseSchemaXmlString(text)
+    applyImportedSchema(parsed)
+  } catch (err) {
+    jsonError.value = `导入 schema 失败：${err.message || String(err)}`
+    jsonErrorLine.value = null
+  }
+}
+
+function applyImportedJson(text) {
+  internal = true
+  editSource = 'json'
+  jsonText.value = text
+  try {
+    clearJsonError()
+    const s = buildSchemaFromJsonString(schema.id, schema.desc, jsonText.value)
+    applyPathHintsToNodes(s.children, '')
+    schema.children = s.children
+    syncXmlFromSchema()
+  } catch (e) {
+    setJsonParseError(e, jsonText.value)
+  } finally {
+    internal = false
+  }
+}
+
+function applyImportedSchema(parsed) {
+  internal = true
+  editSource = 'tree'
+  try {
+    schema.id = parsed.id
+    schema.desc = parsed.desc
+    schema.children = parsed.children
+    applyPathHintsToNodes(schema.children, '')
+    const example = buildJsonExampleFromTree(buildFullSchema())
+    jsonText.value = objectToJsonString(example)
+    clearJsonError()
+    syncXmlFromSchema()
+  } catch (e) {
+    jsonError.value = e.message || String(e)
+    jsonErrorLine.value = null
+  } finally {
+    internal = false
+  }
+}
+
+function onPreviewKeydown(e) {
+  if (e.key !== 'Escape') return
+  if (importConfirmKind.value) {
+    e.preventDefault()
+    cancelImportConfirm()
+    return
+  }
+  if (xmlPreviewOpen.value) {
+    e.preventDefault()
+    closeXmlPreview()
+  }
+}
 
 let editSource = null
 let internal = false
@@ -59,13 +188,13 @@ function applyFromJson() {
   editSource = 'json'
   internal = true
   try {
-    jsonError.value = ''
+    clearJsonError()
     const s = buildSchemaFromJsonString(schema.id, schema.desc, jsonText.value)
     applyPathHintsToNodes(s.children, '')
     schema.children = s.children
     syncXmlFromSchema()
   } catch (e) {
-    jsonError.value = formatJsonParseError(e, jsonText.value)
+    setJsonParseError(e, jsonText.value)
   } finally {
     internal = false
   }
@@ -78,10 +207,11 @@ function applyFromTree() {
   try {
     const example = buildJsonExampleFromTree(buildFullSchema())
     jsonText.value = objectToJsonString(example)
-    jsonError.value = ''
+    clearJsonError()
     syncXmlFromSchema()
   } catch (e) {
     jsonError.value = e.message || String(e)
+    jsonErrorLine.value = null
   } finally {
     internal = false
   }
@@ -112,23 +242,22 @@ function resetDemo() {
   internal = true
   editSource = 'json'
   schema.id = 'demoJson'
-  schema.desc = '订单/列表查询响应样例（含 eg 与 desc 说明）'
+  schema.desc = '订单/列表查询响应样例'
   jsonText.value = defaultJson.trim()
   try {
     const s = buildSchemaFromJsonString(schema.id, schema.desc, jsonText.value)
     applyPathHintsToNodes(s.children, '')
     schema.children = s.children
     syncXmlFromSchema()
-    jsonError.value = ''
+    clearJsonError()
   } catch (e) {
-    jsonError.value = formatJsonParseError(e, jsonText.value)
+    setJsonParseError(e, jsonText.value)
   }
   internal = false
 }
 
-const treeLineCount = computed(() => countSchemaTreeNodes(schema.children))
-
 onMounted(() => {
+  window.addEventListener('keydown', onPreviewKeydown)
   internal = true
   editSource = 'json'
   jsonText.value = defaultJson.trim()
@@ -141,6 +270,10 @@ onMounted(() => {
     schema.children = []
   }
   internal = false
+})
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', onPreviewKeydown)
 })
 
 watch(
@@ -168,41 +301,64 @@ watch(
           class="inp"
         >
       </label>
-      <label>
+      <label class="meta-desc-row">
         <span>描述 desc</span>
         <input
           v-model="schema.desc"
           type="text"
           class="inp meta-wide"
         >
+        <div class="meta-actions">
+          <button
+            type="button"
+            class="btn"
+            @click="requestReset"
+          >
+            重置
+          </button>
+          <button
+            type="button"
+            class="btn"
+            @click="requestImportJson"
+          >
+            导入json
+          </button>
+          <button
+            type="button"
+            class="btn"
+            @click="requestImportSchema"
+          >
+            导入schema
+          </button>
+          <button
+            type="button"
+            class="btn"
+            @click="xmlPreviewOpen = true"
+          >
+            预览schema
+          </button>
+          <button
+            type="button"
+            class="btn primary"
+            @click="exportXml"
+          >
+            导出schema
+          </button>
+        </div>
       </label>
-      <div class="meta-actions">
-        <button
-          type="button"
-          class="btn"
-          @click="resetDemo"
-        >
-          重置
-        </button>
-        <button
-          type="button"
-          class="btn primary"
-          @click="exportXml"
-        >
-          导出 {{ schema.id || 'schema' }}-schema.xml
-        </button>
-      </div>
     </div>
 
     <div class="grid">
       <section class="panel">
         <h2>JSON 样例</h2>
         <p class="panel-hint">
-          将完整 json 样例数据复制拷贝到本区域
+          完整 json 样例数据。可复制拷贝到本区域，也可使用导入方式
         </p>
         <div class="code-wrap">
           <LineGutterText
             v-model="jsonText"
+            show-copy
+            :error-line="jsonErrorLine"
             @input="onJsonInput"
           />
         </div>
@@ -219,30 +375,118 @@ watch(
         <p class="panel-hint">
           可视化编辑调整字段
         </p>
-        <TreeGutterView
-          :line-count="treeLineCount"
-          :min-rows="12"
-        >
+        <TreeGutterView>
           <TreeView
             :nodes="schema.children"
             @update="onTreeUpdate"
           />
         </TreeGutterView>
       </section>
-
-      <section class="panel">
-        <h2>Schema XML</h2>
-        <p class="panel-hint">
-          内容预览
-        </p>
-        <div class="code-wrap">
-          <LineGutterText
-            v-model="xmlText"
-            read-only
-          />
-        </div>
-      </section>
     </div>
+
+    <input
+      ref="fileJsonImport"
+      type="file"
+      class="file-input-hidden"
+      accept=".json,application/json"
+      @change="onJsonFilePick"
+    >
+    <input
+      ref="fileSchemaImport"
+      type="file"
+      class="file-input-hidden"
+      accept=".xml,text/xml,application/xml"
+      @change="onSchemaFilePick"
+    >
+
+    <Teleport to="body">
+      <div
+        v-if="importConfirmKind"
+        class="confirm-backdrop"
+        @click.self="cancelImportConfirm"
+      >
+        <div
+          class="confirm-sheet"
+          role="alertdialog"
+          aria-modal="true"
+          aria-labelledby="import-confirm-title"
+        >
+          <h3
+            id="import-confirm-title"
+            class="confirm-title"
+          >
+            {{
+              importConfirmKind === 'reset'
+                ? '重置'
+                : importConfirmKind === 'json'
+                  ? '导入 JSON'
+                  : '导入 Schema XML'
+            }}
+          </h3>
+          <p class="confirm-body">
+            {{
+              importConfirmKind === 'reset'
+                ? '重置将丢弃当前编辑，恢复为内置示例（含 JSON 样例、结构树与 schema），是否继续？'
+                : '导入将覆盖当前编辑内容（含 JSON 样例、结构树与 schema），是否继续？'
+            }}
+          </p>
+          <div class="confirm-actions">
+            <button
+              type="button"
+              class="btn"
+              @click="cancelImportConfirm"
+            >
+              取消
+            </button>
+            <button
+              type="button"
+              class="btn primary"
+              @click="confirmImportProceed"
+            >
+              确定
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
+    <Teleport to="body">
+      <div
+        v-if="xmlPreviewOpen"
+        class="xml-preview-backdrop"
+        @click.self="closeXmlPreview"
+      >
+        <div
+          class="xml-preview-sheet"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="xml-preview-title"
+        >
+          <div class="xml-preview-head">
+            <h2 id="xml-preview-title">
+              Schema XML
+            </h2>
+            <button
+              type="button"
+              class="btn"
+              @click="closeXmlPreview"
+            >
+              关闭
+            </button>
+          </div>
+          <p class="panel-hint xml-preview-hint">
+            内容预览
+          </p>
+          <div class="code-wrap xml-preview-code">
+            <LineGutterText
+              v-model="xmlText"
+              read-only
+              show-copy
+            />
+          </div>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>
 
@@ -277,11 +521,17 @@ watch(
 .meta-wide {
   width: min(420px, 40vw) !important;
 }
+.meta-desc-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
 .meta-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
-  margin-left: auto;
+  flex-shrink: 0;
 }
 .btn.primary {
   background: var(--accent);
@@ -294,7 +544,7 @@ watch(
 }
 .grid {
   display: grid;
-  grid-template-columns: 1fr 1.15fr 1fr;
+  grid-template-columns: 1fr 1.15fr;
   gap: 12px;
   min-height: calc(100vh - 180px);
 }
@@ -341,5 +591,103 @@ watch(
   color: #c62828;
   font-size: 12px;
   margin: 6px 0 0;
+}
+.xml-preview-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+  background: rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(2px);
+}
+.xml-preview-sheet {
+  display: flex;
+  flex-direction: column;
+  width: min(1200px, 92vw);
+  max-height: min(88vh, 900px);
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 16px;
+  box-shadow:
+    0 25px 50px -12px rgba(0, 0, 0, 0.22),
+    0 0 0 1px rgba(255, 255, 255, 0.06) inset;
+}
+.xml-preview-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-shrink: 0;
+}
+.xml-preview-head h2 {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0;
+  color: var(--text);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.xml-preview-hint {
+  margin-bottom: 6px;
+  flex-shrink: 0;
+}
+.xml-preview-code {
+  flex: 1 1 auto;
+  min-height: 0;
+  height: min(480px, 65vh);
+}
+.xml-preview-code :deep(.gwrap) {
+  min-height: min(480px, 65vh);
+}
+.file-input-hidden {
+  position: fixed;
+  left: -10000px;
+  top: 0;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  overflow: hidden;
+}
+.confirm-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1001;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 16px;
+  background: rgba(15, 23, 42, 0.45);
+  backdrop-filter: blur(2px);
+}
+.confirm-sheet {
+  width: min(420px, 92vw);
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 18px 20px;
+  box-shadow:
+    0 25px 50px -12px rgba(0, 0, 0, 0.22),
+    0 0 0 1px rgba(255, 255, 255, 0.06) inset;
+}
+.confirm-title {
+  margin: 0 0 10px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+}
+.confirm-body {
+  margin: 0 0 18px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+.confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
 }
 </style>

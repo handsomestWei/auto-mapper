@@ -27,3 +27,20 @@ export function formatJsonParseError(err, text) {
   }
   return msg
 }
+
+/**
+ * JSON 解析错误对应的 1-based 行号（与 formatJsonParseError 规则一致），无则 null。
+ */
+export function getJsonParseErrorLine(err, text) {
+  const msg = err && err.message ? err.message : String(err)
+  const m = msg.match(/position\s+(\d+)/i)
+  if (m) {
+    const pos = parseInt(m[1], 10)
+    return indexToLineCol(text, pos).line
+  }
+  const t = text || ''
+  if (msg.includes('JSON') && t.trimEnd().length) {
+    return indexToLineCol(t, t.length).line
+  }
+  return null
+}
