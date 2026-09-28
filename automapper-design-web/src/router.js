@@ -5,6 +5,9 @@ import RuleDesigner from './views/RuleDesigner.vue'
 
 export default createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
+  scrollBehavior() {
+    return { top: 0 }
+  },
   routes: [
     { path: '/', name: 'home', component: Home, meta: { title: '首页' } },
     { path: '/schema', name: 'schema', component: SchemaDesigner, meta: { title: 'Schema 设计器' } },

@@ -25,6 +25,8 @@ body {
     'Segoe UI',
     system-ui,
     -apple-system,
+    'PingFang SC',
+    'Noto Sans SC',
     sans-serif;
   background: var(--bg);
   color: var(--text);

@@ -3,6 +3,7 @@ import { ref, reactive, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import TreeGutterView from '../TreeGutterView.vue'
 import LineGutterText from '../LineGutterText.vue'
 import SchemaRuleRow from '../components/SchemaRuleRow.vue'
+import PageHeader from '../components/PageHeader.vue'
 import {
   buildSchemaFromJsonString,
   parseSchemaXmlString,
@@ -474,12 +475,14 @@ onUnmounted(() => {
 
 <template>
   <div class="rule-page">
-    <header class="header">
-      <h1>字段转换规则设计器</h1>
-      <p class="header-desc">
-        左侧板块：只读源与树，节点加号插 JSONPath；中间板块：from/to/func/val 编辑规则；右侧板块：只读输出源与树，可选导入json样例或schema作为对照。
-      </p>
-    </header>
+    <PageHeader
+      title="字段转换规则设计器"
+      badge="映射"
+      variant="rule"
+      :hints="['输入源 + JSONPath', '规则编辑', '输出对照']"
+    >
+      左侧板块：只读源与树，节点加号插 JSONPath；中间板块：from/to/func/val 编辑规则；右侧板块：只读输出源与树，可选导入json样例或schema作为对照。
+    </PageHeader>
 
     <div class="meta">
       <label>
@@ -916,19 +919,6 @@ onUnmounted(() => {
   max-width: 1920px;
   margin: 0 auto;
   padding: 1rem 1.25rem 2rem;
-}
-.header h1 {
-  font-size: 1.25rem;
-  font-weight: 600;
-  margin: 0;
-  color: var(--text);
-}
-.header-desc {
-  margin: 0.4rem 0 0;
-  max-width: 62rem;
-  font-size: 12px;
-  color: var(--muted);
-  line-height: 1.45;
 }
 .meta {
   display: flex;

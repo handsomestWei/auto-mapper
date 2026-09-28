@@ -1,94 +1,92 @@
-# auto-mapper
+<h1 align="center">auto-mapper</h1>
 
-java json对象属性值自动映射转换。
+<p align="center"><strong>配置驱动的 JSON 字段映射</strong></p>
 
-## 仓库结构
+<p align="center">内部服务互调 · 外部 / 第三方对接 · API 网关出入参</p>
 
-| 目录 | 说明 |
+---
+
+**内外系统对接、API 网关出入参对齐** 时，最烦的往往不是业务本身，而是两边 JSON 长得不一样：字段名不同、层级不同，还夹杂格式和字典转换。传统做法是生成 POJO、手写一层层 getter / setter，接口一改就要跟着改代码、重新发版。
+
+**auto-mapper** 把「报文长什么样」和「字段怎么对应」抽成可读的配置：同一套 schema / rule，人可以评审，Java 运行时可以直接执行。适合 **内部服务互调、对接外部/第三方接口，以及 API 网关里的入参出参转换**。接口变了，优先改配置，而不是改一堆胶水代码。
+
+---
+
+## 配套模块
+
+| | 给谁用 | 做什么 |
+|---|--------|--------|
+| **可视化设计器** | 对接、网关配置、测试、评审的人 | 对着字段树配结构和映射，导出 XML |
+| **运行时 core** | 业务工程 / 网关 | 加载 XML，把源数据映射成目标 JSON |
+
+---
+
+## 要解决的问题
+
+![要解决的问题：内外接口字段对不齐、网关硬编码、Schema 难读、手写路径易错、改完要发版](docs/problems-overview.png)
+
+- **内外接口字段对不齐。** 内部模型一套，外部网关或第三方又是另一套，对应关系散落在转换类里，新人看不懂，评审也很难一眼看出「哪个字段进了对端」。
+- **网关出入参靠硬编码。** API 网关、接口编排里为了对齐报文去生成 Java 类、补 setter，和真正的路由、鉴权逻辑缠在一起，接口一变就要改代码。
+- **标准 JSON Schema 不友好。** 机器能读，人读起来费劲，不适合当「字段说明书」给产品和运维看。
+- **手写 XML / 路径容易错。** 嵌套列表、JSONPath 写错一条，往往到联调或上线才爆。
+- **改完要发版才生效。** 很多时候只是调字段对应，却不得不走完整发布流程。
+
+---
+
+## 可视化设计器
+
+给「配映射的人」用：打开浏览器就能维护字段树和转换规则，**不必先啃 XML，也不必先写 Java**。内部接口、外部对接、网关出入参，都可以在同一套树上配清楚。启动方式与页面说明见 **[automapper-design-web/README.md](automapper-design-web/README.md)**。
+
+![可视化设计器首页](docs/design-web-overview.png)
+
+**能做什么**
+
+- 丢一份 JSON 样例，自动生成字段树（名称、类型、嵌套），再按需改、导出 schema。
+- 对照结构树编写映射：从哪来、到哪去，需要时加上转换函数和固定值。
+- 在页面上预览映射结果，减少「导出以后才发现路径写错」。
+- 产物就是普通 XML，和运行时使用同一套约定，静态部署即可，不绑后端。
+
+**好在哪里**
+
+结构给人看、给版本管理看；规则可以点选路径而不是凭记忆手打。设计器只管「配清楚」，真正执行仍由 core 完成——网关或业务服务加载同一份文件即可。
+
+---
+
+## 运行时 core
+
+给「跑在服务或网关里的代码」用：工程依赖这一个模块，用 schema 编号和 rule 编号做一次映射，得到目标 JSON。
+
+![运行时引擎：配置驱动的 JSON 映射](docs/core-overview.png)
+
+**能做什么**
+
+- 读懂 schema / rule，按 JSONPath 取值、赋值。
+- JSONPath 不够时，走内置转换（建列表、设值、日期格式、字典等），也可以挂自己的函数。
+- 配置放在约定目录里，支持文件热更新：调内外接口或网关字段对应，不必次次发版。
+- 输出就是目标结构的 JSON，方便网关、编排、第三方对接直接往下传。
+
+**好在哪里**
+
+映射规则和业务代码解耦，XML 可 diff、可回滚；复杂转换集中在函数里，而不是复制粘贴一段段 if-else。细节见 [automapper-core 说明](automapper-core/README.md)。
+
+---
+
+## 这套工具的优点
+
+1. **按场景拆得开。** 内部服务互调、外部/第三方对接、API 网关出入参，都是「两套 JSON 对齐」这一件事，用同一套配置做完。
+2. **配置即文档。** schema 说明「长什么样」，rule 说明「怎么对应」，评审和排障不用翻 Java。
+3. **改映射不等于改代码。** 多数字段调整，改 XML（或在设计器里改完导出）即可，运行时按编号加载。
+4. **人和机器用同一份文件。** 设计器降低编写门槛，core 保证执行语义；不必维护两套互不同步的「文档 vs 实现」。
+5. **扩展点清楚。** 简单对应走路径；格式、字典、拼装走函数；再复杂就自定义函数，而不是把特例写回网关或业务里。
+
+落地时通常准备三样东西：一份目标形态的 JSON 样例、一份 schema、一份 rule。运行时按编号选用，转换结果就是对端或网关下游要的 JSON。
+
+---
+
+## 仓库里有什么
+
+| 目录 | 用途 |
 |------|------|
-| `automapper-core/` | **运行时**：按 schema / rule XML 解析与执行映射；支持 JSONPath、内置映射函数与 SPI 自定义扩展；提供 Java API（如对象→目标 JSON）、文件热更新等，供应用集成。 |
-| `automapper-design-web/` | **可视化编辑**：浏览器内维护字段树结构与转换规则，生成可与「核心库」对齐的 schema XML / rule XML，并附映射结果预览辅助校验，独立于后端 JVM 部署。 |
-
-## 简介
-
-**auto-mapper** 是一套 **面向 JSON 报文的配置化结构与映射工具**：同一套配置文件既可供人读写，也可被 Java 运行时加载，把「接口报文长什么样、字段如何对应」从业务代码里抽离出来，减少硬编码与重复胶水逻辑。
-
-要落地一次转换，通常只需三类输入：
-
-1. **一份 JSON 样例**（或约定好的目标形态），用于推导或约束「目标结构」；
-2. **schema XML**：描述字段树与类型等元信息，便于落盘、审查与版本管理；
-3. **rule XML**：用 `from` / `to`（JSONPath）声明字段级映射，必要时在 `func` 中声明内置或自定义映射函数。
-
-运行时通过 **schema id** 与 **rule id** 选用上述配置，将源数据（如 `JSONObject`、POJO）映射为目标结构。**不必**为每一条接口变更重写 Java POJO + 手写 setter 链路；规则的增删改优先落在 XML，再随发布或热更新生效。
-
-与之配套：
-
-- **`automapper-core`** 承担 **解析 XML、装载规则、执行 JSONPath、调用函数扩展、产出目标 JSON** 等能力，以 Maven 单模块的形式供业务工程依赖。
-- **`automapper-design-web`** 不承担运行时转换，而是通过 **表单化 / 结构化编辑**降低 schema、rule 文件的编写门槛，并让导出的文本与引擎侧语义一致。
-
-**典型适用场景**：低代码/API 网关/接口编排中的出入参对齐、多套系统或第三方网关报文字段映射、需要 **独立演进** schema 与规则且希望对运维与评审友好的团队。
-
-## 设计思路
-
-### 解耦
-
-- 传统的工具，映射转换关系需要硬编码，需要生成 pojo java 文件；传统的 json schema 标准格式文件可读性较差
-- 基于 xml 文件，使用 xml 描述映射规则，使用 xml 保存 json schema，提高可读和可维护性。减少胶水代码，且利用文件热更新能力，实现属性和规则的动态调整
-- 可用于上层低代码平台的接口生成、api 网关的接口入出参管理、第三方接口对接开发等
-
-### 属性映射
-
-使用 ali fastjson 的 JSONPath 做属性路径访问。[path 语法参考](https://github.com/alibaba/fastjson/wiki/JSONPath)
-
-### 映射函数
-
-当 JSONPath 不满足需求时，可编写函数实现复杂的映射转换，使用时在 `rule 规则描述 xml` 的 `func` 属性中声明函数名
-
-#### 内置函数
-
-内置了部分映射函数
-
-#### 自定义
-
-可扩展，支持编写自定义函数处理。以 JDK SPI 方式注册
-
-## 使用说明（automapper-core）
-
-```bash
-cd automapper-core
-mvn compile
-mvn test
-```
-
-示例代码：
-
-```java
-// step1 初始化。单例模式，全局做一次即可
-AutoMapper autoMapper = AutoMapper.newInstance();
-
-// step2 使用 json 示例自动生成 json schema xml
-String schemaId = "testJson";
-SchemaUtil.createSchemaFile(schemaId, "for test", jsonData, schemaDir);
-
-// step3 定义转换规则，编写 rule.xml
-String ruleId = "testRule";
-
-// step4 对源 pojo，依据规则，转换成目标 testJson
-JSONObject rs = AutoMapper.getInstance().map(srcObj, "testJson", "testRule");
-```
-
-## 前端设计器（automapper-design-web）
-
-**功能面向**：在浏览器中完成与 **schema / rule 工程**相关的编辑与校验辅助，产物为普通 XML 文本，可与 `automapper-core` 使用的目录与命名约定对接。
-
-- **Schema 设计器**：从 JSON 样例生成或调整字段树，实时生成与 `SchemaUtil` 思路一致的 **`*-schema.xml`**，支持导出、重置与结构树行号对照，减少手写 XML 出错。
-- **字段转换规则设计器**：以表格形式维护多条 `from` / `to` / `func` / `val`，可按左侧 JSON 树上的路径插入 JSONPath；提供 **映射结果预览**（基于当前页的解析与内置规则语义在浏览器侧演算，用于对照，可能与线上引擎细节存在差异），便于在提交配置前自检。
-- **部署形态**：静态前端资源本地或静态托管均可；不包含 Servlet、也不替代 `automapper-core` 运行时。
-
-```bash
-cd automapper-design-web
-npm install
-npm run dev
-npm run build
-npm run lint
-```
+| [`automapper-design-web/`](automapper-design-web/README.md) | 可视化设计器 |
+| [`automapper-core/`](automapper-core/README.md) | Java 运行时 |
+| [`docs/`](docs) | 本页说明图 |

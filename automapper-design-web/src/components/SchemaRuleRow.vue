@@ -85,12 +85,16 @@ function onAdd() {
   border: 1px solid var(--border);
 }
 .tln {
-  flex: 0 0 1.5rem;
-  text-align: right;
+  flex: 0 0 auto;
+  align-self: center;
   font-size: 11px;
-  color: var(--gutter);
+  font-weight: 600;
+  color: var(--accent);
+  background: rgba(37, 99, 235, 0.1);
+  padding: 2px 7px;
+  border-radius: 4px;
+  line-height: 1.3;
   user-select: none;
-  font-family: ui-monospace, Menlo, monospace;
 }
 .nm {
   font-weight: 600;

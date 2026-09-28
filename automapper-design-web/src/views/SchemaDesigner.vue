@@ -13,6 +13,7 @@ import {
 import { formatJsonParseError, getJsonParseErrorLine } from '../jsonError.js'
 import { applyPathHintsToNodes } from '../schemaDemoHints.js'
 import { DEFAULT_JSON_SAMPLE } from '../demoSamples.js'
+import PageHeader from '../components/PageHeader.vue'
 
 const defaultJson = DEFAULT_JSON_SAMPLE.trim()
 
@@ -271,12 +272,14 @@ watch(
 
 <template>
   <div class="app">
-    <header class="header">
-      <h1>Schema 设计器</h1>
-      <p class="header-desc">
-        左侧为完整 JSON 样例，可直接编辑、粘贴或使用「导入 json」；右侧结构树中可视化编辑字段，并可通过「导入 / 预览 / 导出 schema」管理 XML。
-      </p>
-    </header>
+    <PageHeader
+      title="Schema 设计器"
+      badge="结构"
+      variant="schema"
+      :hints="['JSON 样例', '结构树', '导入 / 预览 / 导出 XML']"
+    >
+      左侧为完整 JSON 样例，可直接编辑、粘贴或使用「导入 json」；右侧结构树中可视化编辑字段，并可通过「导入 / 预览 / 导出 schema」管理 XML。
+    </PageHeader>
 
     <div class="meta">
       <label>
@@ -483,19 +486,6 @@ watch(
   max-width: 1920px;
   margin: 0 auto;
   padding: 1rem 1.25rem 2rem;
-}
-.header h1 {
-  font-size: 1.25rem;
-  font-weight: 600;
-  margin: 0;
-  color: var(--text);
-}
-.header-desc {
-  margin: 0.4rem 0 0;
-  max-width: 56rem;
-  font-size: 12px;
-  color: var(--muted);
-  line-height: 1.45;
 }
 .meta {
   display: flex;
