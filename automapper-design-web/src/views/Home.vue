@@ -125,22 +125,6 @@ import heroImg from '../assets/hero-mapping.png'
         </li>
       </ol>
     </section>
-
-    <footer class="home-foot">
-      <a
-        class="foot-link"
-        href="https://github.com/handsomestWei"
-        target="_blank"
-        rel="noopener noreferrer"
-      >作者 GitHub</a>
-      <span class="foot-sep">·</span>
-      <a
-        class="foot-link"
-        href="https://github.com/handsomestWei/auto-mapper"
-        target="_blank"
-        rel="noopener noreferrer"
-      >本仓库 auto-mapper</a>
-    </footer>
   </div>
 </template>
 
@@ -389,24 +373,6 @@ import heroImg from '../assets/hero-mapping.png'
   margin: 0;
   font-size: 13px;
   line-height: 1.55;
-  color: var(--muted);
-}
-.home-foot {
-  margin-top: 2.25rem;
-  padding-top: 1.25rem;
-  border-top: 1px solid #e5e7eb;
-  text-align: center;
-  font-size: 13px;
-}
-.foot-link {
-  color: #4f46e5;
-  text-decoration: none;
-}
-.foot-link:hover {
-  text-decoration: underline;
-}
-.foot-sep {
-  margin: 0 0.5rem;
   color: var(--muted);
 }
 @media (max-width: 720px) {
